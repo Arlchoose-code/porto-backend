@@ -80,69 +80,112 @@ func FindBookmarkById(c *gin.Context) {
 	})
 }
 
-// POST /api/bookmarks/sync — sync semua repo dari GitHub (auth)
-func SyncAllBookmarks(c *gin.Context) {
+// POST /api/bookmarks — buat bookmark baru manual (auth)
+func CreateBookmark(c *gin.Context) {
 
-	// Fetch semua repo dari GitHub
-	repos, err := helpers.FetchAllGithubRepos()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+	var req structs.BookmarkRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
 			Success: false,
-			Message: "Failed to fetch GitHub repositories",
-			Errors:  map[string]string{"github": err.Error()},
+			Message: "Validation Errors",
+			Errors:  helpers.TranslateErrorMessage(err),
 		})
 		return
 	}
 
-	var created, updated int
+	bookmark := models.Bookmark{
+		Url:         req.Url,
+		Title:       req.Title,
+		Description: req.Description,
+	}
 
-	for _, repo := range repos {
-		var bookmark models.Bookmark
+	if err := database.DB.Create(&bookmark).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+			Success: false,
+			Message: "Failed to create bookmark",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
 
-		// Cek apakah repo sudah ada di DB by URL
-		if err := database.DB.Where("url = ?", repo.HtmlUrl).First(&bookmark).Error; err != nil {
-			// Belum ada, buat baru
-			bookmark = models.Bookmark{
-				Url:         repo.HtmlUrl,
-				Title:       repo.Name,
-				Description: repo.Description,
-			}
-			database.DB.Create(&bookmark)
-
-			// Simpan topics
-			for _, topic := range repo.Topics {
-				database.DB.Create(&models.BookmarkTopic{
-					BookmarkId: bookmark.Id,
-					Name:       topic,
-				})
-			}
-			created++
-		} else {
-			// Sudah ada, update data terbaru
-			bookmark.Title = repo.Name
-			bookmark.Description = repo.Description
-			database.DB.Save(&bookmark)
-
-			// Reset topics lama lalu simpan yang baru
-			database.DB.Where("bookmark_id = ?", bookmark.Id).Delete(&models.BookmarkTopic{})
-			for _, topic := range repo.Topics {
-				database.DB.Create(&models.BookmarkTopic{
-					BookmarkId: bookmark.Id,
-					Name:       topic,
-				})
-			}
-			updated++
+	// Simpan topics
+	for _, topic := range req.Topics {
+		if topic != "" {
+			database.DB.Create(&models.BookmarkTopic{
+				BookmarkId: bookmark.Id,
+				Name:       topic,
+			})
 		}
 	}
 
+	// Reload dengan topics
+	database.DB.Preload("Topics").First(&bookmark, bookmark.Id)
+
+	c.JSON(http.StatusCreated, structs.SuccessResponse{
+		Success: true,
+		Message: "Bookmark created successfully",
+		Data:    bookmark,
+	})
+}
+
+// PUT /api/bookmarks/:id — update bookmark (auth)
+func UpdateBookmark(c *gin.Context) {
+
+	id := c.Param("id")
+	var bookmark models.Bookmark
+
+	if err := database.DB.First(&bookmark, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, structs.ErrorResponse{
+			Success: false,
+			Message: "Bookmark not found",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	var req structs.BookmarkRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+			Success: false,
+			Message: "Validation Errors",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	bookmark.Url = req.Url
+	bookmark.Title = req.Title
+	bookmark.Description = req.Description
+
+	if err := database.DB.Save(&bookmark).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+			Success: false,
+			Message: "Failed to update bookmark",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	// Reset topics lama lalu simpan yang baru
+	database.DB.Where("bookmark_id = ?", bookmark.Id).Delete(&models.BookmarkTopic{})
+	for _, topic := range req.Topics {
+		if topic != "" {
+			database.DB.Create(&models.BookmarkTopic{
+				BookmarkId: bookmark.Id,
+				Name:       topic,
+			})
+		}
+	}
+
+	// Reload dengan topics
+	database.DB.Preload("Topics").First(&bookmark, bookmark.Id)
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
-		Message: "Bookmarks synced successfully",
-		Data: map[string]any{
-			"total":   len(repos),
-			"created": created,
-			"updated": updated,
-		},
+		Message: "Bookmark updated successfully",
+		Data:    bookmark,
 	})
 }
 
@@ -161,7 +204,6 @@ func DeleteBookmark(c *gin.Context) {
 		return
 	}
 
-	// Hapus topics dulu (sudah handle otomatis karena OnDelete:CASCADE)
 	if err := database.DB.Delete(&bookmark).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
 			Success: false,

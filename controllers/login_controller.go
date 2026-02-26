@@ -13,11 +13,9 @@ import (
 
 func Login(c *gin.Context) {
 
-	// Inisialisasi struct untuk menampung data dari request
 	var req = structs.UserLoginRequest{}
 	var user = models.User{}
 
-	// Validasi input dari request body menggunakan ShouldBindJSON
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
 			Success: false,
@@ -27,8 +25,6 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Cari user berdasarkan username yang diberikan di database
-	// Jika tidak ditemukan, kirimkan respons error Unauthorized
 	if err := database.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, structs.ErrorResponse{
 			Success: false,
@@ -38,8 +34,6 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Bandingkan password yang dimasukkan dengan password yang sudah di-hash di database
-	// Jika tidak cocok, kirimkan respons error Unauthorized
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, structs.ErrorResponse{
 			Success: false,
@@ -49,21 +43,63 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Jika login berhasil, generate token untuk user
+	// Generate access token (60 menit) dan refresh token (7 hari)
 	token := helpers.GenerateToken(user.Id, user.Username)
+	refreshToken := helpers.GenerateRefreshToken(user.Id, user.Username)
 
-	// Kirimkan response sukses dengan status OK dan data user serta token
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Login Success",
-		Data: structs.UserResponse{
-			Id:        user.Id,
-			Name:      user.Name,
-			Username:  user.Username,
-			Email:     user.Email,
-			CreatedAt: user.CreatedAt.String(),
-			UpdatedAt: user.UpdatedAt.String(),
-			Token:     &token,
+		Data: map[string]any{
+			"id":            user.Id,
+			"name":          user.Name,
+			"username":      user.Username,
+			"email":         user.Email,
+			"created_at":    user.CreatedAt.String(),
+			"updated_at":    user.UpdatedAt.String(),
+			"token":         token,
+			"refresh_token": refreshToken,
+		},
+	})
+}
+
+// POST /api/refresh — generate access token baru dari refresh token
+func RefreshToken(c *gin.Context) {
+
+	var req struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+			Success: false,
+			Message: "Validation Errors",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	// Validasi refresh token
+	claims, err := helpers.ValidateToken(req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, structs.ErrorResponse{
+			Success: false,
+			Message: "Invalid or expired refresh token",
+			Errors:  map[string]string{"refresh_token": "invalid or expired"},
+		})
+		return
+	}
+
+	// Generate access token baru
+	newToken := helpers.GenerateToken(claims.UserId, claims.Username)
+	newRefreshToken := helpers.GenerateRefreshToken(claims.UserId, claims.Username)
+
+	c.JSON(http.StatusOK, structs.SuccessResponse{
+		Success: true,
+		Message: "Token refreshed",
+		Data: map[string]any{
+			"token":         newToken,
+			"refresh_token": newRefreshToken,
 		},
 	})
 }

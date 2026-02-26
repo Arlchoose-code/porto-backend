@@ -69,9 +69,9 @@ func SearchBrave(query string) ([]BraveSearchResult, error) {
 	// Delay hindari rate limit
 	time.Sleep(1 * time.Second)
 
-	// count=5 untuk dapat lebih banyak referensi
+	// count=2 untuk dapat lebih banyak referensi
 	searchUrl := fmt.Sprintf(
-		"https://api.search.brave.com/res/v1/web/search?q=%s&count=5&search_lang=ms",
+		"https://api.search.brave.com/res/v1/web/search?q=%s&count=2&search_lang=ms",
 		url.QueryEscape(cleanedQuery),
 	)
 

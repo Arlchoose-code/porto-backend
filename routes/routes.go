@@ -26,6 +26,7 @@ func SetupRouter() *gin.Engine {
 
 	// Auth routes
 	api.POST("/login", controllers.Login)
+	api.POST("/refresh", controllers.RefreshToken)
 
 	// Authenticated routes
 	auth := api.Group("/")
@@ -93,7 +94,8 @@ func SetupRouter() *gin.Engine {
 		auth.PUT("/blogs/:id/publish", controllers.PublishBlog)
 		auth.PUT("/blogs/:id/reject", controllers.RejectBlog)
 
-		auth.POST("/bookmarks/sync", controllers.SyncAllBookmarks)
+		auth.POST("/bookmarks", controllers.CreateBookmark)
+		auth.PUT("/bookmarks/:id", controllers.UpdateBookmark)
 		auth.DELETE("/bookmarks/:id", controllers.DeleteBookmark)
 
 		auth.PUT("/profile", controllers.UpsertProfile)

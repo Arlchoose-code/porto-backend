@@ -1,16 +1,12 @@
 package middlewares
 
 import (
-	"arlchoose/backend-api/config"
 	"arlchoose/backend-api/helpers"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
-
-var jwtKey = []byte(config.GetEnv("JWT_SECRET", "secret_key"))
 
 func AuthMiddleware() gin.HandlerFunc {
 
@@ -36,13 +32,8 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
-		claims := &helpers.CustomClaims{}
-
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-
-		if err != nil || !token.Valid {
+		claims, err := helpers.ValidateToken(tokenString)
+		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": "Invalid token",
 			})

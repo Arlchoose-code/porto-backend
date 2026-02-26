@@ -53,6 +53,7 @@ func InitDB() {
 		&models.Bookmark{},
 		&models.BookmarkTopic{},
 		&models.Tool{},
+		&models.ToolUsage{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)

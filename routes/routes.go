@@ -102,6 +102,7 @@ func SetupRouter() *gin.Engine {
 		auth.PUT("/settings", controllers.UpsertSettings)
 
 		auth.GET("/tools/all", controllers.FindAllTools)
+		auth.GET("/tools/stats", controllers.ToolStats)
 		auth.POST("/tools", controllers.CreateTool)
 		auth.PUT("/tools/:id", controllers.UpdateTool)
 		auth.PUT("/tools/:id/toggle", controllers.ToggleTool)

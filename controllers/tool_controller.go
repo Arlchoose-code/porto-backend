@@ -140,10 +140,75 @@ func RunTool(c *gin.Context) {
 		return
 	}
 
+	// Catat usage secara async — tidak blocking response
+	go func() {
+		usage := models.ToolUsage{
+			ToolId:   tool.Id,
+			ToolSlug: tool.Slug,
+			IP:       c.ClientIP(),
+		}
+		database.DB.Create(&usage)
+	}()
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Tool executed successfully",
 		Data:    result,
+	})
+}
+
+// GET /api/tools/stats — statistik penggunaan tools (auth)
+func ToolStats(c *gin.Context) {
+
+	// Total usage per tool (join dengan nama tool)
+	type ToolUsageStat struct {
+		ToolSlug  string `json:"tool_slug"`
+		ToolName  string `json:"tool_name"`
+		TotalRuns int    `json:"total_runs"`
+	}
+
+	var perTool []ToolUsageStat
+	database.DB.Raw(`
+		SELECT tu.tool_slug, t.name as tool_name, COUNT(*) as total_runs
+		FROM tool_usages tu
+		LEFT JOIN tools t ON t.slug = tu.tool_slug
+		GROUP BY tu.tool_slug, t.name
+		ORDER BY total_runs DESC
+	`).Scan(&perTool)
+
+	// Usage 7 hari terakhir (per hari)
+	type DailyUsage struct {
+		Date  string `json:"date"`
+		Count int    `json:"count"`
+	}
+	var daily []DailyUsage
+	database.DB.Raw(`
+		SELECT DATE(created_at) as date, COUNT(*) as count
+		FROM tool_usages
+		WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+		GROUP BY DATE(created_at)
+		ORDER BY date ASC
+	`).Scan(&daily)
+
+	// Total keseluruhan
+	var totalAll int64
+	database.DB.Model(&models.ToolUsage{}).Count(&totalAll)
+
+	// Total hari ini
+	var todayCount int64
+	database.DB.Model(&models.ToolUsage{}).
+		Where("DATE(created_at) = CURDATE()").
+		Count(&todayCount)
+
+	c.JSON(http.StatusOK, structs.SuccessResponse{
+		Success: true,
+		Message: "Tool Stats",
+		Data: map[string]any{
+			"per_tool":    perTool,
+			"daily":       daily,
+			"total_all":   totalAll,
+			"today_count": todayCount,
+		},
 	})
 }
 

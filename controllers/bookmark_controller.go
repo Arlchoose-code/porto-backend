@@ -122,6 +122,8 @@ func CreateBookmark(c *gin.Context) {
 	// Reload dengan topics
 	database.DB.Preload("Topics").First(&bookmark, bookmark.Id)
 
+	go helpers.RevalidateFrontend("bookmark", "")
+
 	c.JSON(http.StatusCreated, structs.SuccessResponse{
 		Success: true,
 		Message: "Bookmark created successfully",
@@ -182,6 +184,8 @@ func UpdateBookmark(c *gin.Context) {
 	// Reload dengan topics
 	database.DB.Preload("Topics").First(&bookmark, bookmark.Id)
 
+	go helpers.RevalidateFrontend("bookmark", "")
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Bookmark updated successfully",
@@ -212,6 +216,8 @@ func DeleteBookmark(c *gin.Context) {
 		})
 		return
 	}
+
+	go helpers.RevalidateFrontend("bookmark", "")
 
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,

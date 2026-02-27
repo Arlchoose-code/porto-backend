@@ -103,6 +103,8 @@ func UpsertProfile(c *gin.Context) {
 		return
 	}
 
+	go helpers.RevalidateFrontend("profile", "")
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Profile saved successfully",

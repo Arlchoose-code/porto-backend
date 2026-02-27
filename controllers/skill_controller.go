@@ -109,6 +109,8 @@ func CreateSkill(c *gin.Context) {
 		return
 	}
 
+	go helpers.RevalidateFrontend("skill", "")
+
 	// Kirimkan response sukses
 	c.JSON(http.StatusCreated, structs.SuccessResponse{
 		Success: true,
@@ -180,6 +182,8 @@ func UpdateSkill(c *gin.Context) {
 		return
 	}
 
+	go helpers.RevalidateFrontend("skill", "")
+
 	// Kirimkan response sukses
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
@@ -219,6 +223,8 @@ func DeleteSkill(c *gin.Context) {
 		})
 		return
 	}
+
+	go helpers.RevalidateFrontend("skill", "")
 
 	// Kirimkan response sukses
 	c.JSON(http.StatusOK, structs.SuccessResponse{

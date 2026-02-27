@@ -220,6 +220,8 @@ func CreateBlog(c *gin.Context) {
 
 	database.DB.Preload("Tags").Preload("User").First(&blog, blog.Id)
 
+	go helpers.RevalidateFrontend("blog", blog.Slug)
+
 	c.JSON(http.StatusCreated, structs.SuccessResponse{
 		Success: true,
 		Message: "Blog created successfully",
@@ -291,6 +293,8 @@ func UpdateBlog(c *gin.Context) {
 
 	database.DB.Preload("Tags").Preload("User").First(&blog, blog.Id)
 
+	go helpers.RevalidateFrontend("blog", blog.Slug)
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Blog updated successfully",
@@ -325,6 +329,8 @@ func DeleteBlog(c *gin.Context) {
 		return
 	}
 
+	go helpers.RevalidateFrontend("blog", "")
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Blog deleted successfully",
@@ -356,6 +362,8 @@ func ArchiveBlog(c *gin.Context) {
 		})
 		return
 	}
+
+	go helpers.RevalidateFrontend("blog", blog.Slug)
 
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,

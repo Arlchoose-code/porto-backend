@@ -90,6 +90,8 @@ func UpsertSettings(c *gin.Context) {
 		result[s.Key] = s.Value
 	}
 
+	go helpers.RevalidateFrontend("settings", "")
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Settings saved successfully",

@@ -293,6 +293,8 @@ func PublishBlog(c *gin.Context) {
 		return
 	}
 
+	go helpers.RevalidateFrontend("blog", blog.Slug)
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Blog published successfully",

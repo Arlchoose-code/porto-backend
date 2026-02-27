@@ -106,6 +106,8 @@ func CreateProject(c *gin.Context) {
 
 	database.DB.Preload("TechStacks").Preload("Images").First(&project, project.Id)
 
+	go helpers.RevalidateFrontend("project", project.Slug)
+
 	c.JSON(http.StatusCreated, structs.SuccessResponse{
 		Success: true,
 		Message: "Project created successfully",
@@ -165,6 +167,8 @@ func UpdateProject(c *gin.Context) {
 
 	database.DB.Preload("TechStacks").Preload("Images").First(&project, project.Id)
 
+	go helpers.RevalidateFrontend("project", project.Slug)
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Project updated successfully",
@@ -200,6 +204,8 @@ func DeleteProject(c *gin.Context) {
 		})
 		return
 	}
+
+	go helpers.RevalidateFrontend("project", "")
 
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,

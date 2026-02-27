@@ -269,6 +269,8 @@ func CreateTool(c *gin.Context) {
 		return
 	}
 
+	go helpers.RevalidateFrontend("tool", "")
+
 	c.JSON(http.StatusCreated, structs.SuccessResponse{
 		Success: true,
 		Message: "Tool created successfully",
@@ -330,6 +332,8 @@ func UpdateTool(c *gin.Context) {
 		})
 		return
 	}
+
+	go helpers.RevalidateFrontend("tool", "")
 
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
@@ -400,6 +404,8 @@ func DeleteTool(c *gin.Context) {
 		})
 		return
 	}
+
+	go helpers.RevalidateFrontend("tool", "")
 
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,

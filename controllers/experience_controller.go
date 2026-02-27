@@ -133,6 +133,8 @@ func CreateExperience(c *gin.Context) {
 	database.DB.Preload("Images").First(&experience, experience.Id)
 
 	// Kirimkan response sukses
+	go helpers.RevalidateFrontend("experience", "")
+
 	c.JSON(http.StatusCreated, structs.SuccessResponse{
 		Success: true,
 		Message: "Experience created successfully",
@@ -213,6 +215,8 @@ func UpdateExperience(c *gin.Context) {
 	database.DB.Preload("Images").First(&experience, experience.Id)
 
 	// Kirimkan response sukses
+	go helpers.RevalidateFrontend("experience", "")
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Experience updated successfully",
@@ -255,6 +259,8 @@ func DeleteExperience(c *gin.Context) {
 	}
 
 	// Kirimkan response sukses
+	go helpers.RevalidateFrontend("experience", "")
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Experience deleted successfully",

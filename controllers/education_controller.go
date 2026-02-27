@@ -107,6 +107,8 @@ func CreateEducation(c *gin.Context) {
 	}
 
 	// Kirimkan response sukses
+	go helpers.RevalidateFrontend("education", "")
+
 	c.JSON(http.StatusCreated, structs.SuccessResponse{
 		Success: true,
 		Message: "Education created successfully",
@@ -180,6 +182,8 @@ func UpdateEducation(c *gin.Context) {
 	}
 
 	// Kirimkan response sukses
+	go helpers.RevalidateFrontend("education", "")
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Education updated successfully",
@@ -220,6 +224,8 @@ func DeleteEducation(c *gin.Context) {
 	}
 
 	// Kirimkan response sukses
+	go helpers.RevalidateFrontend("education", "")
+
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
 		Message: "Education deleted successfully",

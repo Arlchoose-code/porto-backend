@@ -413,3 +413,79 @@ func DeleteTool(c *gin.Context) {
 		Data:    nil,
 	})
 }
+
+// toolSeedData — default data untuk setiap tool dari registry
+// Kamu bisa edit name/description/category/order lewat dashboard setelah sync
+var toolSeedData = map[string]struct {
+	Description string
+	Category    string
+	Order       int
+}{
+	"md5":                   {Description: "Generate MD5 hash dari teks. Cocok untuk checksum atau fingerprint data.", Category: "Hash & Encode", Order: 1},
+	"sha1":                  {Description: "Generate SHA-1 hash dari teks. Lebih aman dari MD5 untuk verifikasi integritas.", Category: "Hash & Encode", Order: 2},
+	"sha256":                {Description: "Generate SHA-256 hash dari teks. Standar industri untuk kriptografi modern.", Category: "Hash & Encode", Order: 3},
+	"base64-encode":         {Description: "Encode teks ke format Base64. Berguna untuk encoding data binary ke string.", Category: "Hash & Encode", Order: 4},
+	"base64-decode":         {Description: "Decode string Base64 kembali ke teks asli.", Category: "Hash & Encode", Order: 5},
+	"uuid-generator":        {Description: "Generate UUID v4 secara acak. Ideal untuk ID unik di database atau sistem terdistribusi.", Category: "Generator", Order: 6},
+	"password-generator":    {Description: "Generate password kuat secara acak dengan kombinasi huruf, angka, dan simbol.", Category: "Generator", Order: 7},
+	"word-counter":          {Description: "Hitung jumlah kata, karakter, kalimat, dan paragraf dari teks.", Category: "Text", Order: 8},
+	"text-reverse":          {Description: "Balik urutan karakter dari teks yang kamu masukkan.", Category: "Text", Order: 9},
+	"json-formatter":        {Description: "Format dan prettify JSON agar lebih mudah dibaca. Otomatis validasi syntax.", Category: "Developer", Order: 10},
+	"json-minifier":         {Description: "Minify JSON — hapus whitespace dan newline untuk menghemat ukuran payload.", Category: "Developer", Order: 11},
+	"http-get":              {Description: "Kirim HTTP GET request ke URL manapun dan lihat responsenya langsung di browser.", Category: "Developer", Order: 12},
+	"check-ign-ml":          {Description: "Cek username / IGN akun Mobile Legends: Bang Bang berdasarkan User ID dan Zone ID.", Category: "Game Tools", Order: 13},
+	"check-ign-ff":          {Description: "Cek username / IGN akun Free Fire berdasarkan User ID.", Category: "Game Tools", Order: 14},
+	"check-ign-cod":         {Description: "Cek username / IGN akun Call of Duty Mobile berdasarkan User ID.", Category: "Game Tools", Order: 15},
+	"check-ign-bloodstrike": {Description: "Cek username / IGN akun Blood Strike berdasarkan User ID.", Category: "Game Tools", Order: 16},
+}
+
+// POST /api/tools/sync — sync tools dari registry ke DB (auth)
+// Tools yang sudah ada di DB tidak akan ditimpa (name, description, order, icon, category tetap)
+// Tools baru dari registry akan di-insert dengan data default dari toolSeedData
+func SyncTools(c *gin.Context) {
+
+	type SyncResult struct {
+		Added   []string `json:"added"`
+		Skipped []string `json:"skipped"`
+	}
+
+	result := SyncResult{Added: []string{}, Skipped: []string{}}
+
+	for slug, meta := range helpers.ToolRegistry {
+		var existing models.Tool
+		err := database.DB.Where("slug = ?", slug).First(&existing).Error
+
+		if err != nil {
+			// Belum ada di DB → insert baru dengan seed data
+			seed := toolSeedData[slug]
+			desc := seed.Description
+			category := seed.Category
+			order := seed.Order
+			if category == "" {
+				category = "General"
+			}
+
+			newTool := models.Tool{
+				Name:        meta.Name,
+				Slug:        slug,
+				Description: desc,
+				Category:    category,
+				IsActive:    true,
+				Order:       order,
+			}
+			database.DB.Create(&newTool)
+			result.Added = append(result.Added, slug)
+		} else {
+			// Sudah ada → skip (tidak override data yang sudah di-edit user)
+			result.Skipped = append(result.Skipped, slug)
+		}
+	}
+
+	go helpers.RevalidateFrontend("tool", "")
+
+	c.JSON(http.StatusOK, structs.SuccessResponse{
+		Success: true,
+		Message: "Sync completed",
+		Data:    result,
+	})
+}

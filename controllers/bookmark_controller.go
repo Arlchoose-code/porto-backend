@@ -35,7 +35,7 @@ func FindBookmarks(c *gin.Context) {
 
 	query.Count(&total)
 
-	query.Order("bookmarks.id asc").
+	query.Order("bookmarks.id desc").
 		Limit(pg.Limit).
 		Offset(pg.Offset).
 		Find(&bookmarks)
